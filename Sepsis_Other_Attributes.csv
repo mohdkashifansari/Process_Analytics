@@ -277,7 +277,6 @@ BM,True,False,True,True,True,True,True,True,80.0,True,False,True,True,True,False
 CM,True,True,False,True,False,True,True,False,80.0,True,False,True,True,True,True,False,True,True
 DM,True,True,False,False,False,True,True,False,45.0,True,False,True,True,True,True,True,True,True
 GM,True,True,False,True,False,True,True,False,90.0,True,False,True,True,True,True,True,True,True
-JM,False,False,False,False,False,False,False,False,60.0,False,False,False,False,False,False,False,False,False
 MM,False,False,False,False,False,False,False,False,85.0,False,False,False,False,False,False,False,False,False
 NM,True,True,False,False,False,True,True,True,80.0,True,False,True,False,True,False,True,False,False
 OM,True,True,False,True,False,True,True,True,80.0,True,False,True,True,True,True,True,True,True
@@ -382,7 +381,6 @@ ER,True,True,False,False,False,True,True,False,90.0,True,False,True,True,True,Fa
 FR,True,True,False,False,False,True,True,True,65.0,True,False,True,True,True,True,True,True,True
 GR,False,False,False,False,False,False,False,False,60.0,False,False,False,False,False,False,False,False,False
 HR,True,True,False,False,False,True,True,True,85.0,True,False,True,True,True,True,True,True,True
-IR,True,True,False,False,False,True,True,True,60.0,True,False,True,True,True,False,True,False,True
 JR,True,True,False,True,False,True,True,True,80.0,True,False,True,True,True,False,True,False,True
 KR,True,True,False,True,False,True,True,False,85.0,True,False,True,True,True,True,True,True,True
 LR,True,True,False,True,False,True,True,True,55.0,True,False,True,True,True,False,True,False,True
@@ -486,7 +484,6 @@ AW,True,True,False,False,False,True,True,False,75.0,True,False,True,True,True,Tr
 DW,True,True,False,False,False,True,True,True,80.0,True,False,True,True,True,False,True,True,True
 EW,True,True,False,True,False,True,True,False,40.0,True,False,True,True,True,False,True,False,True
 FW,True,True,False,True,False,True,True,True,40.0,True,True,True,True,True,True,True,True,True
-HW,False,False,False,False,False,False,False,False,75.0,False,False,False,False,False,False,False,False,False
 JW,True,True,False,False,False,True,True,True,80.0,True,False,True,True,True,False,True,False,True
 KW,True,True,False,True,False,True,True,True,80.0,True,False,True,True,True,True,True,True,False
 NW,True,True,False,True,False,True,True,True,80.0,True,False,True,True,True,True,True,True,True
@@ -563,13 +560,11 @@ FAA,True,True,False,True,False,True,True,True,65.0,True,False,True,True,True,Fal
 GAA,True,True,False,False,False,True,True,False,50.0,True,False,True,True,True,True,True,True,True
 HAA,True,True,True,True,True,True,True,True,80.0,True,False,True,True,True,True,True,True,True
 IAA,False,False,False,False,False,False,False,False,70.0,False,False,False,False,False,False,False,False,False
-JAA,True,False,False,True,False,True,False,False,65.0,True,False,True,True,True,False,False,False,True
 LAA,True,True,False,False,False,True,True,False,25.0,True,False,True,True,True,False,True,False,False
 MAA,False,False,False,False,False,False,False,False,75.0,False,False,False,False,False,False,False,False,False
 PAA,True,True,False,True,False,True,True,True,65.0,True,False,True,True,True,False,True,False,True
 QAA,True,False,False,True,False,True,True,False,55.0,False,False,True,False,True,False,False,False,False
 RAA,True,True,False,True,False,True,True,False,60.0,True,False,True,True,True,False,True,False,True
-SAA,False,False,False,True,False,True,False,False,90.0,False,False,True,False,False,False,False,False,False
 TAA,True,True,False,False,False,True,True,False,60.0,True,False,True,True,True,True,True,True,True
 UAA,False,False,False,False,False,False,False,False,35.0,False,False,False,True,False,False,False,False,True
 VAA,True,True,False,True,True,True,True,True,85.0,True,False,True,True,True,True,True,True,True
@@ -601,7 +596,6 @@ XBA,True,True,False,False,False,True,True,False,55.0,True,False,True,True,True,F
 YBA,True,False,False,False,False,True,False,False,90.0,True,False,True,False,True,False,False,False,False
 ZBA,True,True,False,False,False,True,True,False,45.0,True,False,True,True,True,True,True,True,False
 ACA,True,True,False,False,False,True,True,False,55.0,True,False,True,True,True,False,True,False,True
-BCA,True,True,True,True,True,True,True,False,60.0,True,False,True,True,True,True,True,True,True
 CCA,True,True,False,True,False,True,True,False,75.0,True,False,True,True,True,False,True,False,True
 DCA,True,True,False,True,False,False,True,False,75.0,True,False,True,True,True,True,True,True,True
 ECA,True,True,True,True,True,True,True,True,50.0,True,False,True,True,True,True,True,True,True
