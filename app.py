@@ -3,7 +3,7 @@ import numpy as np
 import json
 import pickle
 
-# Load model and column data
+# Load model and metadata
 model_filename = "sepsis_activity_model.pkl"
 columns_filename = "columns.json"
 
@@ -14,21 +14,21 @@ with open(columns_filename, "r") as f:
     column_data = json.load(f)
 
 # Extract saved metadata
-data_columns = column_data["data_columns"]
 max_seq_length = column_data["max_seq_length"]
 activity_encoder = column_data["activity_encoder"]
 label_classes = column_data["label_classes"]
+pca_feature_names = column_data["pca_features"]  # Load PCA-reduced feature names
 
 # Function to preprocess input sequence
 def encode_sequence(user_sequence):
-    """ Encodes and pads the user input sequence to match model input format. """
+    """Encodes and pads the user input sequence."""
     encoded_seq = [activity_encoder.get(activity, 0) for activity in user_sequence]
     padded_seq = encoded_seq + [0] * (max_seq_length - len(encoded_seq))
     return np.array(padded_seq).reshape(1, -1)
 
-# Function to handle test values
+# Function to extract test values
 def extract_test_values(user_sequence):
-    """ Extracts Leucocytes, CRP, and LacticAcid values if present in input. """
+    """Extracts Leucocytes, CRP, and LacticAcid values if present in input."""
     leucocytes, crp, lactic_acid = np.nan, np.nan, np.nan
     for activity in user_sequence:
         if "Leucocytes(" in activity:
@@ -40,16 +40,16 @@ def extract_test_values(user_sequence):
     return leucocytes, crp, lactic_acid
 
 # Streamlit Web App
-st.title("Sepsis Activity Prediction")
-st.write("Enter the sequence of activities and patient attributes to predict the next activity.")
+st.title("Sepsis Activity Prediction (PCA-Optimized)")
+st.write("Enter a sequence of activities and the necessary patient attributes.")
 
 # User input: Sequence of activities
 user_sequence = st.text_input("Enter activities (comma-separated, e.g., 'ER Registration, CRP(160), Leucocytes(12)')")
 
-# User input: Patient attributes
-st.write("Enter patient attributes (True/False for conditions, Age as a number):")
+# User input: Only necessary PCA-reduced features
+st.write("Enter key patient attributes (True/False for conditions, Age as a number):")
 patient_attributes = []
-for attr in data_columns[max_seq_length:]:  # Skip sequence-related columns
+for attr in pca_feature_names:  # Only take relevant PCA-reduced inputs
     value = st.text_input(f"{attr}", key=attr)
     if value.lower() in ["true", "false"]:
         patient_attributes.append(1 if value.lower() == "true" else 0)
@@ -66,7 +66,7 @@ if st.button("Predict Next Activity"):
     # Encode sequence
     encoded_seq = encode_sequence(user_sequence_list)
 
-    # Combine all inputs
+    # Combine all inputs (only necessary features)
     user_input = np.hstack([encoded_seq, patient_attributes, [leucocytes, crp, lactic_acid]])
     user_input = np.nan_to_num(user_input, nan=0)  # Replace NaNs with 0
 
