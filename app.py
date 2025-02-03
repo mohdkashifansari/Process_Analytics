@@ -26,15 +26,18 @@ biomarker_next_activity_mapping = {
     "CRP": {"Severe": "IV Antibiotics", "Moderate": "LacticAcid", "Low": "ER Triage"},
     "LacticAcid": {"Critical": "ICU Admission", "High": "IV Fluid", "Normal": "ER Triage"}
 }
-max_sequence_length = 10  # Adjust based on training data
+max_sequence_length = model.input_shape[0][1]  # Corrected shape extraction for sequence input
+feature_input_shape = model.input_shape[1][1]  # Corrected shape extraction for feature input
 
 # Function to predict next activity and remaining time
 def predict_next_activity_and_time(activity_sequence, feature_values, biomarker_values):
     sequence = tokenizer.texts_to_sequences([activity_sequence])
     padded_sequence = pad_sequences(sequence, maxlen=max_sequence_length, padding='post')
+    padded_sequence = np.array(padded_sequence).reshape(1, max_sequence_length)  # Ensure correct shape
     
     feature_array = np.array(feature_values).reshape(1, -1)
     feature_array = scaler.transform(feature_array)
+    feature_array = feature_array.reshape(1, feature_input_shape)  # Ensure correct shape
     
     for biomarker in biomarker_priority:
         if biomarker in biomarker_values:
