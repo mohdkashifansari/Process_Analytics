@@ -1,15 +1,15 @@
 Feature 1,Feature 2,Correlation
-InfectionSuspected,DiagnosticIC,0.8849098087048191
-DiagnosticIC,SIRSCriteria2OrMore,0.8831802846143454
+InfectionSuspected,SIRSCriteria2OrMore,0.9692463966168499
 DiagnosticBlood,DiagnosticLacticAcid,0.8698960888038504
+InfectionSuspected,DiagnosticIC,0.8849098087048191
+SIRSCriteria2OrMore,DiagnosticIC,0.8831802846143454
+DiagnosticIC,SIRSCriteria2OrMore,0.8831802846143454
+DiagnosticLacticAcid,DiagnosticIC,0.8772555404493939
+DiagnosticLacticAcid,DiagnosticBlood,0.8698960888038504
+DiagnosticIC,DiagnosticBlood,0.9080604717752291
 DiagnosticIC,DiagnosticLacticAcid,0.8772555404493939
 DiagnosticXthorax,DiagnosticECG,0.8539088428643774
-DiagnosticBlood,DiagnosticIC,0.9080604717752291
-DiagnosticLacticAcid,DiagnosticBlood,0.8698960888038504
+SIRSCriteria2OrMore,InfectionSuspected,0.9692463966168499
 DiagnosticECG,DiagnosticXthorax,0.8539088428643774
 DiagnosticIC,InfectionSuspected,0.8849098087048191
-DiagnosticLacticAcid,DiagnosticIC,0.8772555404493939
-InfectionSuspected,SIRSCriteria2OrMore,0.9692463966168499
-DiagnosticIC,DiagnosticBlood,0.9080604717752291
-SIRSCriteria2OrMore,InfectionSuspected,0.9692463966168499
-SIRSCriteria2OrMore,DiagnosticIC,0.8831802846143454
+DiagnosticBlood,DiagnosticIC,0.9080604717752291
