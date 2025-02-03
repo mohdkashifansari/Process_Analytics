@@ -1,40 +1,12 @@
 import streamlit as st
 import pickle
 import numpy as np
-import pandas as pd
-import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import Layer
-from tensorflow.keras.utils import get_custom_objects
-
-# Define NotEqual Layer
-class NotEqual(Layer):
-    def call(self, inputs):
-        return tf.math.not_equal(inputs[0], inputs[1])
-
-# Define AnyLayer with Proper Handling of 'keepdims'
-class AnyLayer(Layer):
-    def __init__(self, keepdims=False, **kwargs):
-        super().__init__(**kwargs)
-        self.keepdims = keepdims
-
-    def call(self, inputs):
-        return tf.reduce_any(inputs, axis=-1, keepdims=self.keepdims)
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({"keepdims": self.keepdims})  # Include keepdims in config
-        return config
-
-# Register custom layers
-get_custom_objects().update({"NotEqual": NotEqual, "Any": AnyLayer})
-
-# Load the model with custom object scope
-with tf.keras.utils.custom_object_scope({"NotEqual": NotEqual, "Any": AnyLayer}):
-    model = load_model("sepsis_lstm_model.h5")
 
 # Load saved models and preprocessors
+with open("sepsis_lstm_model.pkl", "rb") as file:
+    model = pickle.load(file)  # Now loading using pickle
+
 with open("sepsis_tokenizer.pkl", "rb") as file:
     tokenizer = pickle.load(file)
 
@@ -46,6 +18,8 @@ with open("sepsis_scaler.pkl", "rb") as file:
 
 with open("sepsis_time_model.pkl", "rb") as file:
     time_model = pickle.load(file)
+
+st.write("Models loaded successfully!")
 
 # Ensure the model's expected input shapes
 max_sequence_length = model.input_shape[0][1]
