@@ -1,40 +1,12 @@
 import streamlit as st
 import pickle
 import numpy as np
-import pandas as pd
-import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import Layer
-from tensorflow.keras.utils import get_custom_objects
-
-# Define NotEqual Layer
-class NotEqual(Layer):
-    def call(self, inputs):
-        return tf.math.not_equal(inputs[0], inputs[1])
-
-# Define AnyLayer with Proper Handling of 'keepdims'
-class AnyLayer(Layer):
-    def __init__(self, keepdims=False, **kwargs):
-        super().__init__(**kwargs)
-        self.keepdims = keepdims
-
-    def call(self, inputs):
-        return tf.reduce_any(inputs, axis=-1, keepdims=self.keepdims)
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({"keepdims": self.keepdims})  # Include keepdims in config
-        return config
-
-# Register custom layers
-get_custom_objects().update({"NotEqual": NotEqual, "Any": AnyLayer})
-
-# Load the model with custom object scope
-with tf.keras.utils.custom_object_scope({"NotEqual": NotEqual, "Any": AnyLayer}):
-    model = load_model("sepsis_lstm_model.h5")
 
 # Load saved models and preprocessors
+with open("sepsis_lstm_model.pkl", "rb") as file:
+    model = pickle.load(file)
+
 with open("sepsis_tokenizer.pkl", "rb") as file:
     tokenizer = pickle.load(file)
 
@@ -47,27 +19,40 @@ with open("sepsis_scaler.pkl", "rb") as file:
 with open("sepsis_time_model.pkl", "rb") as file:
     time_model = pickle.load(file)
 
-# Ensure the model's expected input shapes
-max_sequence_length = model.input_shape[0][1]
-feature_input_shape = model.input_shape[1][1]
+# Define necessary variables
+biomarker_priority = ["LacticAcid", "CRP", "Leucocytes"]
+biomarker_next_activity_mapping = {
+    "Leucocytes": {"High": "LacticAcid", "Elevated": "CRP", "Normal": "ER Triage"},
+    "CRP": {"Severe": "IV Antibiotics", "Moderate": "LacticAcid", "Low": "ER Triage"},
+    "LacticAcid": {"Critical": "ICU Admission", "High": "IV Fluid", "Normal": "ER Triage"}
+}
+max_sequence_length = model.input_shape[0][1]  # Corrected shape extraction for sequence input
+feature_input_shape = model.input_shape[1][1]  # Corrected shape extraction for feature input
 
 # Function to predict next activity and remaining time
 def predict_next_activity_and_time(activity_sequence, feature_values, biomarker_values):
     sequence = tokenizer.texts_to_sequences([activity_sequence])
     padded_sequence = pad_sequences(sequence, maxlen=max_sequence_length, padding='post')
+    padded_sequence = np.array(padded_sequence).reshape(1, max_sequence_length)  # Ensure correct shape
     
-    feature_df = pd.DataFrame([feature_values], columns=[
-        "DiagnosticArtAstrup", "DiagnosticUrinarySediment", "SIRSCritHeartRate", "SIRSCritTachypnea",
-        "SIRSCritTemperature", "Hypotensie", "SIRSCritLeucos", "DiagnosticLacticAcid", "Oligurie",
-        "Hypoxie", "DisfuncOrg", "Infusion", "Age", "InfectionSuspected"
-    ])
-    feature_array = scaler.transform(feature_df)
+    feature_array = np.array(feature_values).reshape(1, -1)
+    feature_array = scaler.transform(feature_array)
+    feature_array = feature_array.reshape(1, feature_input_shape)  # Ensure correct shape
+    
+    for biomarker in biomarker_priority:
+        if biomarker in biomarker_values:
+            biomarker_value = biomarker_values[biomarker]
+            if biomarker_value in biomarker_next_activity_mapping[biomarker]:
+                return biomarker_next_activity_mapping[biomarker][biomarker_value], 3600  # Default 1-hour time estimate
     
     model_prediction = model.predict([padded_sequence, feature_array])
     predicted_class = np.argmax(model_prediction, axis=1)
     predicted_next_activity = label_encoder.inverse_transform(predicted_class)[0]
     
-    predicted_remaining_time = time_model.predict([[600]])[0] if hasattr(time_model, 'predict') else 0
+    if predicted_next_activity in ["Release A", "Release B", "Release C", "Release D", "Release E", "Return ER"]:
+        predicted_remaining_time = 0
+    else:
+        predicted_remaining_time = time_model.predict([[600]])[0]  # Default 10 minutes
     
     return predicted_next_activity, round(predicted_remaining_time, 2)
 
@@ -75,14 +60,20 @@ def predict_next_activity_and_time(activity_sequence, feature_values, biomarker_
 st.title("Sepsis Next Activity & Time Prediction")
 st.subheader("Enter Patient Details and Biomarker Levels")
 
-all_activities = ["Leucocytes", "CRP", "LacticAcid", "ER Triage", "ER Sepsis Triage", "IV Liquid", "IV Antibiotics", "Admission NC", "Release A", "Return ER", "Admission IC", "Release B", "Release C", "Release D", "Release E"]
+all_activities = ["Leucocytes", "CRP", "LacticAcid", "ER Triage",
+       "ER Sepsis Triage", "IV Liquid", "IV Antibiotics", "Admission NC",
+       "Release A", "Return ER", "Admission IC", "Release B", "Release C",
+       "Release D", "Release E"]
 st.write("### Activity Sequence")
 
+# Initialize session state for activities if not already present
 if "activity_list" not in st.session_state:
     st.session_state.activity_list = ["ER Registration"]
 
+# Display first activity as fixed "ER Registration"
 st.write("Activity 1: ER Registration")
 
+# Display existing activities as dropdowns
 for i in range(1, len(st.session_state.activity_list)):
     col1, col2 = st.columns([4, 1])
     with col1:
@@ -92,8 +83,9 @@ for i in range(1, len(st.session_state.activity_list)):
             st.session_state.activity_list.pop(i)
             st.rerun()
 
+# Add activity button
 if st.button("+ Add Activity"):
-    st.session_state.activity_list.append(all_activities[0])
+    st.session_state.activity_list.append(all_activities[0])  # Default new activity as "Leucocytes"
 
 final_activity_sequence = " -> ".join(st.session_state.activity_list)
 
@@ -122,7 +114,7 @@ biomarker_options = {
 for biomarker in biomarkers:
     biomarker_values[biomarker] = st.selectbox(f"{biomarker} Level", biomarker_options[biomarker])
     if biomarker_values[biomarker] == "NaN":
-        biomarker_values[biomarker] = "Normal"
+        biomarker_values[biomarker] = "Normal"  # Default to Normal if NaN is selected
 
 if st.button("Predict Next Activity & Time"):
     predicted_activity, predicted_time = predict_next_activity_and_time(final_activity_sequence, feature_values, biomarker_values)
