@@ -1,104 +1,78 @@
 import streamlit as st
-import pickle
 import numpy as np
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+import json
+import pickle
 
-# Load saved models and preprocessors
-with open("sepsis_lstm_model.pkl", "rb") as file:
-    model = pickle.load(file)  # Now loading using pickle
+# Load model and metadata
+model_filename = "sepsis_activity_model.pkl"
+columns_filename = "columns.json"
 
-with open("sepsis_tokenizer.pkl", "rb") as file:
-    tokenizer = pickle.load(file)
+with open(model_filename, "rb") as f:
+    rf_model = pickle.load(f)
 
-with open("sepsis_label_encoder.pkl", "rb") as file:
-    label_encoder = pickle.load(file)
+with open(columns_filename, "r") as f:
+    column_data = json.load(f)
 
-with open("sepsis_scaler.pkl", "rb") as file:
-    scaler = pickle.load(file)
+# Extract saved metadata
+max_seq_length = column_data["max_seq_length"]
+activity_encoder = column_data["activity_encoder"]
+label_classes = column_data["label_classes"]
+pca_feature_names = column_data["pca_features"]  # Load PCA-reduced feature names
 
-with open("sepsis_time_model.pkl", "rb") as file:
-    time_model = pickle.load(file)
+# Function to preprocess input sequence
+def encode_sequence(user_sequence):
+    """Encodes and pads the user input sequence."""
+    encoded_seq = [activity_encoder.get(activity, 0) for activity in user_sequence]
+    padded_seq = encoded_seq + [0] * (max_seq_length - len(encoded_seq))
+    return np.array(padded_seq).reshape(1, -1)
 
-st.write("Models loaded successfully!")
+# Function to extract test values
+def extract_test_values(user_sequence):
+    """Extracts Leucocytes, CRP, and LacticAcid values if present in input."""
+    leucocytes, crp, lactic_acid = np.nan, np.nan, np.nan
+    for activity in user_sequence:
+        if "Leucocytes(" in activity:
+            leucocytes = float(activity.split("(")[-1].strip(")"))
+        elif "CRP(" in activity:
+            crp = float(activity.split("(")[-1].strip(")"))
+        elif "LacticAcid(" in activity:
+            lactic_acid = float(activity.split("(")[-1].strip(")"))
+    return leucocytes, crp, lactic_acid
 
-# Ensure the model's expected input shapes
-max_sequence_length = model.input_shape[0][1]
-feature_input_shape = model.input_shape[1][1]
+# Streamlit Web App
+st.title("Sepsis Activity Prediction (PCA-Optimized)")
+st.write("Enter a sequence of activities and the necessary patient attributes.")
 
-# Function to predict next activity and remaining time
-def predict_next_activity_and_time(activity_sequence, feature_values, biomarker_values):
-    sequence = tokenizer.texts_to_sequences([activity_sequence])
-    padded_sequence = pad_sequences(sequence, maxlen=max_sequence_length, padding='post')
+# User input: Sequence of activities
+user_sequence = st.text_input("Enter activities (comma-separated, e.g., 'ER Registration, CRP(160), Leucocytes(12)')")
+
+# User input: Only necessary PCA-reduced features
+st.write("Enter key patient attributes (True/False for conditions, Age as a number):")
+patient_attributes = []
+for attr in pca_feature_names:  # Only take relevant PCA-reduced inputs
+    value = st.text_input(f"{attr}", key=attr)
+    if value.lower() in ["true", "false"]:
+        patient_attributes.append(1 if value.lower() == "true" else 0)
+    else:
+        patient_attributes.append(float(value) if value else np.nan)
+
+# Predict button
+if st.button("Predict Next Activity"):
+    user_sequence_list = [x.strip() for x in user_sequence.split(",") if x]
     
-    feature_df = pd.DataFrame([feature_values], columns=[
-        "DiagnosticArtAstrup", "DiagnosticUrinarySediment", "SIRSCritHeartRate", "SIRSCritTachypnea",
-        "SIRSCritTemperature", "Hypotensie", "SIRSCritLeucos", "DiagnosticLacticAcid", "Oligurie",
-        "Hypoxie", "DisfuncOrg", "Infusion", "Age", "InfectionSuspected"
-    ])
-    feature_array = scaler.transform(feature_df)
-    
-    model_prediction = model.predict([padded_sequence, feature_array])
-    predicted_class = np.argmax(model_prediction, axis=1)
-    predicted_next_activity = label_encoder.inverse_transform(predicted_class)[0]
-    
-    predicted_remaining_time = time_model.predict([[600]])[0] if hasattr(time_model, 'predict') else 0
-    
-    return predicted_next_activity, round(predicted_remaining_time, 2)
+    # Extract test values
+    leucocytes, crp, lactic_acid = extract_test_values(user_sequence_list)
 
-# Streamlit UI
-st.title("Sepsis Next Activity & Time Prediction")
-st.subheader("Enter Patient Details and Biomarker Levels")
+    # Encode sequence
+    encoded_seq = encode_sequence(user_sequence_list)
 
-all_activities = ["Leucocytes", "CRP", "LacticAcid", "ER Triage", "ER Sepsis Triage", "IV Liquid", "IV Antibiotics", "Admission NC", "Release A", "Return ER", "Admission IC", "Release B", "Release C", "Release D", "Release E"]
-st.write("### Activity Sequence")
+    # Combine all inputs (only necessary features)
+    user_input = np.hstack([encoded_seq, patient_attributes, [leucocytes, crp, lactic_acid]])
+    user_input = np.nan_to_num(user_input, nan=0)  # Replace NaNs with 0
 
-if "activity_list" not in st.session_state:
-    st.session_state.activity_list = ["ER Registration"]
+    # Predict next activity
+    predicted_index = rf_model.predict(user_input.reshape(1, -1))[0]
+    predicted_activity = label_classes[predicted_index]
 
-st.write("Activity 1: ER Registration")
-
-for i in range(1, len(st.session_state.activity_list)):
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        st.session_state.activity_list[i] = st.selectbox(f"Activity {i+1}", all_activities, index=all_activities.index(st.session_state.activity_list[i]) if st.session_state.activity_list[i] in all_activities else 0)
-    with col2:
-        if st.button(f"❌", key=f"remove_{i}"):
-            st.session_state.activity_list.pop(i)
-            st.rerun()
-
-if st.button("+ Add Activity"):
-    st.session_state.activity_list.append(all_activities[0])
-
-final_activity_sequence = " -> ".join(st.session_state.activity_list)
-
-st.write("### Patient Features")
-col1, col2 = st.columns(2)
-feature_values = []
-feature_labels = [
-    "DiagnosticArtAstrup", "DiagnosticUrinarySediment", "SIRSCritHeartRate", "SIRSCritTachypnea",
-    "SIRSCritTemperature", "Hypotensie", "SIRSCritLeucos", "DiagnosticLacticAcid", "Oligurie",
-    "Hypoxie", "DisfuncOrg", "Infusion", "Age", "InfectionSuspected"
-]
-for index, label in enumerate(feature_labels):
-    with col1 if index % 2 == 0 else col2:
-        if label == "Age":
-            feature_values.append(st.slider("Age", min_value=5, max_value=110, value=30))
-        else:
-            feature_values.append(1 if st.radio(f"{label}", ["False", "True"]) == "True" else 0)
-
-biomarker_values = {}
-biomarkers = ["Leucocytes", "CRP", "LacticAcid"]
-biomarker_options = {
-    "Leucocytes": ["NaN", "Low (0-7.5)", "Normal (7.5-12.5)", "Elevated (12.5-15.0)", "High (15.0-30.0)", "Critical (>30.0)"],
-    "CRP": ["NaN", "Low (0-50)", "Mild (50-100)", "Moderate (100-150)", "Severe (150-250)", "Critical (>250)"],
-    "LacticAcid": ["NaN", "Normal (0-1.2)", "Borderline (1.2-1.8)", "Elevated (1.8-2.5)", "High (2.5-4.0)", "Critical (>4.0)"]
-}
-for biomarker in biomarkers:
-    biomarker_values[biomarker] = st.selectbox(f"{biomarker} Level", biomarker_options[biomarker])
-    if biomarker_values[biomarker] == "NaN":
-        biomarker_values[biomarker] = "Normal"
-
-if st.button("Predict Next Activity & Time"):
-    predicted_activity, predicted_time = predict_next_activity_and_time(final_activity_sequence, feature_values, biomarker_values)
-    st.success(f"Predicted Next Activity: {predicted_activity}")
-    st.info(f"Estimated Remaining Time: {predicted_time} seconds (~{predicted_time/3600:.2f} hours)")
+    # Display result
+    st.success(f"**Predicted Next Activity: {predicted_activity}**")
