@@ -44,9 +44,9 @@ biomarker_options = {
     "LacticAcid": ["NaN", "Normal (0-1.2)", "Borderline (1.2-1.8)", "Elevated (1.8-2.5)", "High (2.5-4.0)", "Critical (>4.0)"]
 }
 
-# ✅ Function to Clean Biomarker Values
 def clean_biomarker_value(value):
-    return "Normal" if value == "NaN" else value.split(" ")[0]  # Treat "NaN" as "Normal"
+    return None if value == "NaN" else value.split(" ")[0]  # Treat "NaN" as missing
+
 
 # ✅ Function to Predict Next Activity
 def predict_next_activity(activity_sequence, feature_values, biomarker_values):
@@ -62,9 +62,10 @@ def predict_next_activity(activity_sequence, feature_values, biomarker_values):
 
     # ✅ Check Biomarker-Based Rules First
     for biomarker in biomarker_priority:
-        cleaned_value = clean_biomarker_value(biomarker_values[biomarker])
-        if cleaned_value in biomarker_next_activity_mapping[biomarker]:
+        cleaned_value = biomarker_values[biomarker]
+        if cleaned_value is not None and cleaned_value in biomarker_next_activity_mapping[biomarker]:
             return biomarker_next_activity_mapping[biomarker][cleaned_value]
+
 
     # ✅ Predict Next Activity
     model_prediction = model.predict([padded_sequence, feature_array])
@@ -112,8 +113,13 @@ for i in range(1, len(st.session_state.activity_list)):
             st.session_state.activity_list.pop(i)
             st.rerun()
 
+
+
 if st.button("+ Add Activity"):
     st.session_state.activity_list.append(all_activities[0])
+    st.rerun()
+
+
 
 final_activity_sequence = " -> ".join(st.session_state.activity_list)
 
