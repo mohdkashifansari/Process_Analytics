@@ -103,25 +103,53 @@ if "activity_list" not in st.session_state:
 
 st.write("Activity 1: ER Registration")
 
+selected_biomarkers = []  # Track all occurrences of biomarkers
+unique_biomarkers = set()  # Track unique biomarkers (for prediction)
+
 for i in range(1, len(st.session_state.activity_list)):
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.session_state.activity_list[i] = st.selectbox(f"Activity {i+1}", all_activities, 
-                                                         index=all_activities.index(st.session_state.activity_list[i]) if st.session_state.activity_list[i] in all_activities else 0)
+        new_activity = st.selectbox(
+            f"Activity {i+1}", 
+            all_activities, 
+            index=all_activities.index(st.session_state.activity_list[i]) if st.session_state.activity_list[i] in all_activities else 0,
+            key=f"activity_{i}"
+        )
+        st.session_state.activity_list[i] = new_activity
+
+        # If the selected activity is a biomarker, track it
+        if new_activity in biomarker_priority:
+            selected_biomarkers.append((new_activity, i))  # Store tuple of (biomarker, index)
+            unique_biomarkers.add(new_activity)  # Track unique ones (for prediction)
+
     with col2:
         if st.button(f"❌", key=f"remove_{i}"):
             st.session_state.activity_list.pop(i)
             st.rerun()
 
-
-
 if st.button("+ Add Activity"):
     st.session_state.activity_list.append(all_activities[0])
     st.rerun()
 
-
-
 final_activity_sequence = " -> ".join(st.session_state.activity_list)
+
+# ✅ Biomarker Selection (Prompt for each occurrence with unique keys)
+st.write("### Biomarker Levels")
+biomarker_values = {}
+
+for biomarker, index in selected_biomarkers:  # Ensure unique keys per biomarker occurrence
+    biomarker_values[(biomarker, index)] = st.selectbox(
+        f"{biomarker} Level (Activity {index+1})", 
+        biomarker_options[biomarker], 
+        key=f"biomarker_{biomarker}_{index}"
+    )
+
+# ✅ Convert inputs for prediction (only first occurrence of each biomarker)
+cleaned_biomarkers = {}
+for biomarker in biomarker_priority:
+    # Pick only the **first occurrence** for prediction
+    first_occurrence = next((value for (bm, idx), value in biomarker_values.items() if bm == biomarker), "NaN")
+    cleaned_biomarkers[biomarker] = clean_biomarker_value(first_occurrence)
 
 # ✅ Patient Features (6 columns)
 st.write("### Patient Features")
@@ -140,18 +168,14 @@ for i, label in enumerate(feature_labels):
         else:
             feature_values.append(1 if st.radio(f"{label}", ["False", "True"]) == "True" else 0)
 
-# ✅ Biomarker Selection (With Full Options)
-st.write("### Biomarker Levels")
-biomarker_values = {}
-for biomarker in biomarker_priority:
-    biomarker_values[biomarker] = st.selectbox(f"{biomarker} Level", biomarker_options[biomarker])
-
 # ✅ Predict Button
 if st.button("Predict Next Activity & Time"):
-    # Convert NaN to Normal
-    cleaned_biomarkers = {k: clean_biomarker_value(v) for k, v in biomarker_values.items()}
-    
-    predicted_activity, predicted_time = predict_next_activity_and_time(final_activity_sequence, feature_values, cleaned_biomarkers)
-    
-    st.success(f"Predicted Next Activity: {predicted_activity}")
-    st.info(f"Estimated Remaining Time: {predicted_time} seconds (~{predicted_time/3600:.2f} hours)")
+    last_activity = st.session_state.activity_list[-1]  # Get the last activity in the sequence
+
+    if last_activity in ["Release A", "Release B", "Release C", "Release D", "Release E", "Return ER"]:
+        st.success("Process Completed ✅")
+        st.info("Estimated Remaining Time: 0 seconds")
+    else:
+        predicted_activity, predicted_time = predict_next_activity_and_time(final_activity_sequence, feature_values, cleaned_biomarkers)
+        st.success(f"Predicted Next Activity: {predicted_activity}")
+        st.info(f"Estimated Remaining Time: {predicted_time} seconds (~{predicted_time/3600:.2f} hours)")
